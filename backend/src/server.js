@@ -8,7 +8,8 @@ import { Server } from 'socket.io';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
-
+import favoriteRoutes from './routes/favoriteRoutes.js';
+import inquiryRoutes from './routes/inquiryRoutes.js';
 dotenv.config();
 connectDB();
 
@@ -32,8 +33,8 @@ app.get('/api/health', (req, res) => {
 // --- Routes ---
 app.use('/api/auth', authRoutes);
 // app.use('/api/listings', listingRoutes);
-// app.use('/api/favorites', favoriteRoutes);
-// app.use('/api/inquiries', inquiryRoutes);
+ app.use('/api/favorites', favoriteRoutes);
+ app.use('/api/inquiries', inquiryRoutes);
 // app.use('/api/reviews', reviewRoutes);
 // app.use('/api/admin', adminRoutes);
 
