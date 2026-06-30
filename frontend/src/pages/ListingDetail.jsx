@@ -9,6 +9,7 @@ import { MOCK_LISTINGS } from '../mocks/listings';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Skeleton from '../components/ui/Skeleton';
+import ChatWindow from '../components/chat/ChatWindow';
 
 const AMENITY_MAP = {
   wifi: { label: 'WiFi', icon: Wifi },
@@ -29,6 +30,7 @@ const ListingDetail = () => {
   const [message, setMessage] = useState('');
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
+{sent && <ChatWindow inquiryId={sentInquiryId} />}
 
   useEffect(() => {
     const fetch = async () => {
@@ -46,19 +48,21 @@ const ListingDetail = () => {
     fetch();
   }, [id]);
 
-  const handleInquiry = async () => {
-    if (!message.trim()) return;
-    setSending(true);
-    try {
-      await api.post('/inquiries', { listingId: id, message });
-      setSent(true);
-    } catch {
-      alert('Failed to send. Please try again.');
-    } finally {
-      setSending(false);
-    }
-  };
+  const [sentInquiryId, setSentInquiryId] = useState(null);
 
+const handleInquiry = async () => {
+  if (!message.trim()) return;
+  setSending(true);
+  try {
+    const res = await api.post('/inquiries', { listingId: id, message });
+    setSentInquiryId(res.data.inquiry._id);
+    setSent(true);
+  } catch {
+    alert('Failed to send. Please try again.');
+  } finally {
+    setSending(false);
+  }
+};
   if (loading) return (
     <div className="max-w-4xl mx-auto px-6 py-10 space-y-4">
       <Skeleton className="h-72 w-full" />
