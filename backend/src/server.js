@@ -35,8 +35,9 @@ app.use('/api/auth', authRoutes);
 // app.use('/api/listings', listingRoutes);
  app.use('/api/favorites', favoriteRoutes);
  app.use('/api/inquiries', inquiryRoutes);
-// app.use('/api/reviews', reviewRoutes);
-// app.use('/api/admin', adminRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/messages', messageRoutes);
 
 // --- Error handler (must be last, after all routes) ---
 app.use(errorHandler);
@@ -54,13 +55,51 @@ const io = new Server(server, {
   },
 });
 
-io.on('connection', (socket) => {
-  console.log(`Socket connected: ${socket.id}`);
-  socket.on('disconnect', () => {
-    console.log(`Socket disconnected: ${socket.id}`);
-  });
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) return next(new Error('No token'));
+  try {
+    const decoded = verifyAccessToken(token);
+    socket.userId = decoded.id;
+    next();
+  } catch {
+    next(new Error('Invalid token'));
+  }
 });
 
+io.on('connection', (socket) => {
+  // Join a chat room keyed by inquiryId
+  socket.on('join_inquiry', async (inquiryId) => {
+    const inquiry = await Inquiry.findById(inquiryId);
+    if (!inquiry) return;
+    const isParticipant =
+      inquiry.seekerId.toString() === socket.userId ||
+      inquiry.ownerId.toString() === socket.userId;
+    if (!isParticipant) return;
+    socket.join(inquiryId);
+  });
+
+  socket.on('send_message', async ({ inquiryId, text }) => {
+    if (!text?.trim()) return;
+    const inquiry = await Inquiry.findById(inquiryId);
+    if (!inquiry) return;
+    const isParticipant =
+      inquiry.seekerId.toString() === socket.userId ||
+      inquiry.ownerId.toString() === socket.userId;
+    if (!isParticipant) return;
+
+    const message = await Message.create({
+      inquiryId, senderId: socket.userId, text: text.trim(),
+    });
+    await message.populate('senderId', 'name profilePicture');
+
+    // Emit to everyone in the room (both participants)
+    io.to(inquiryId).emit('new_message', message);
+  });
+
+  socket.on('disconnect', () => {});
+});
 server.listen(PORT, () => {
   console.log(`NearStay backend running on port ${PORT}`);
 });
