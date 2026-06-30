@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+@theme {
+  /* === Color tokens === */
+  /* Deep teal - primary brand color, CTAs, active states */
+  --color-teal-50: #E8F2EF;
+  --color-teal-100: #C5E0D9;
+  --color-teal-300: #4D9684;
+  --color-teal-500: #0F4C42;
+  --color-teal-600: #0C3D35;
+  --color-teal-700: #092E28;
+  --color-teal-900: #051815;
+
+  /* Warm coral - the signature accent. Distance badges, favorites, highlights */
+  --color-coral-50: #FFEFE9;
+  --color-coral-100: #FFD6C6;
+  --color-coral-300: #FF9777;
+  --color-coral-500: #FF6B4A;
+  --color-coral-600: #E5502F;
+  --color-coral-700: #B83D22;
+
+  /* Warm neutrals - NOT stark white/black, gives the "fintech-but-warm" feel */
+  --color-paper-50: #FCFBF8;
+  --color-paper-100: #F7F5F0;
+  --color-paper-200: #E8E4DC;
+  --color-paper-300: #D6D0C4;
+
+  --color-ink-900: #1A1A18;
+  --color-ink-700: #3D3B35;
+  --color-ink-500: #6B6862;
+  --color-ink-300: #9C9890;
+
+  --color-success-500: #2D7A4F;
+  --color-danger-500: #C4432E;
+  --color-warning-500: #C48A1F;
+
+  /* === Typography === */
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "Inter", -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* === Radius === */
+  --radius-card: 1.25rem;
+  --radius-control: 0.75rem;
+  --radius-pill: 999px;
+
+  /* === Shadows - soft, warm-tinted, never pure black === */
+  --shadow-card: 0 1px 2px rgba(26, 26, 24, 0.04), 0 8px 24px rgba(26, 26, 24, 0.06);
+  --shadow-card-hover: 0 4px 8px rgba(26, 26, 24, 0.06), 0 16px 40px rgba(26, 26, 24, 0.10);
+  --shadow-popover: 0 8px 30px rgba(26, 26, 24, 0.12);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    background: var(--color-paper-100);
+    color: var(--color-ink-900);
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--color-ink-900);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+
+  /* Distance figures use mono so digits don't jitter visually as they
+     update live with the radius slider - this is the signature detail */
+  .distance-figure {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Visible keyboard focus everywhere - accessibility floor, never skip this */
+  :focus-visible {
+    outline: 2px solid var(--color-teal-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Respect reduced-motion preference globally */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Shimmer animation for skeleton loaders (used instead of spinners) */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-paper-200) 0%,
+    var(--color-paper-50) 50%,
+    var(--color-paper-200) 100%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
