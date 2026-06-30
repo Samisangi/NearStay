@@ -1,9 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import { useSessionRestore } from './hooks/useSessionRestore';
-
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/layout/ProtectedRoute';
-
 import Landing from './pages/Landing';
 import Search from './pages/Search';
 import ListingDetail from './pages/ListingDetail';
