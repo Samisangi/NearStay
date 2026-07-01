@@ -30,7 +30,6 @@ const ListingDetail = () => {
   const [message, setMessage] = useState('');
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
-{sent && <ChatWindow inquiryId={sentInquiryId} />}
 
   useEffect(() => {
     const fetch = async () => {
@@ -195,6 +194,11 @@ const handleInquiry = async () => {
           {sent && (
             <div className="bg-teal-50 border border-teal-100 rounded-card p-4 text-sm text-teal-700">
               Message sent! The owner will respond soon.
+            </div>
+          )}
+          {sent && sentInquiryId && (
+            <div className="mt-4">
+              <ChatWindow inquiryId={sentInquiryId} />
             </div>
           )}
           {!user && (
