@@ -4,12 +4,19 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import http from 'http';
 import { Server } from 'socket.io';
-
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
+import listingRoutes from './routes/listingRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 import favoriteRoutes from './routes/favoriteRoutes.js';
 import inquiryRoutes from './routes/inquiryRoutes.js';
+import reviewRoutes from './routes/reviewRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import messageRoutes from './routes/messageRoutes.js';
+import { verifyAccessToken } from './utils/generateTokens.js';
+import Message from './models/Message.js';
+import Inquiry from './models/Inquiry.js';
 dotenv.config();
 connectDB();
 
@@ -32,9 +39,10 @@ app.get('/api/health', (req, res) => {
 
 // --- Routes ---
 app.use('/api/auth', authRoutes);
-// app.use('/api/listings', listingRoutes);
- app.use('/api/favorites', favoriteRoutes);
- app.use('/api/inquiries', inquiryRoutes);
+app.use('/api/listings', listingRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/favorites', favoriteRoutes);
+app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/messages', messageRoutes);
