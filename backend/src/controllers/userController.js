@@ -1,9 +1,8 @@
 import asyncHandler from 'express-async-handler';
+import { uploadBufferToCloudinary, deleteFromCloudinary } from '../middleware/upload.js';
 import User from '../models/User.js';
 
-// GET /api/users/me — returns the currently authenticated user's profile
 export const getMe = asyncHandler(async (req, res) => {
-  // req.user is already populated by the `protect` middleware
   res.json({
     success: true,
     user: {
@@ -17,31 +16,58 @@ export const getMe = asyncHandler(async (req, res) => {
   });
 });
 
-// PATCH /api/users/me — update name / phone / profilePicture (not email/password)
 export const updateMe = asyncHandler(async (req, res) => {
-  const { name, phone, profilePicture } = req.body;
+  const { name, phone } = req.body;
+  if (name !== undefined) req.user.name = name;
+  if (phone !== undefined) req.user.phone = phone;
 
-  const user = await User.findById(req.user._id);
-  if (!user) {
-    res.status(404);
-    throw new Error('User not found');
+  // Handle profile picture upload
+  if (req.file) {
+    // Delete old picture from Cloudinary if it exists
+    if (req.user.profilePicture) {
+      await deleteFromCloudinary(req.user.profilePicture);
+    }
+    req.user.profilePicture = await uploadBufferToCloudinary(
+      req.file.buffer,
+      'nearstay/profiles'
+    );
   }
 
-  if (name !== undefined) user.name = name.trim();
-  if (phone !== undefined) user.phone = phone.trim();
-  if (profilePicture !== undefined) user.profilePicture = profilePicture;
-
-  await user.save();
+  await req.user.save();
 
   res.json({
     success: true,
     user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      profilePicture: user.profilePicture,
+      id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      phone: req.user.phone,
+      role: req.user.role,
+      profilePicture: req.user.profilePicture,
     },
   });
+});
+
+export const changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    res.status(400);
+    throw new Error('Both current and new password are required');
+  }
+
+  const user = await User.findById(req.user._id).select('+password');
+  const match = await user.comparePassword(currentPassword);
+  if (!match) {
+    res.status(401);
+    throw new Error('Current password is incorrect');
+  }
+
+  if (newPassword.length < 8) {
+    res.status(400);
+    throw new Error('New password must be at least 8 characters');
+  }
+
+  user.password = newPassword; // pre-save hook rehashes it
+  await user.save();
+  res.json({ success: true, message: 'Password changed successfully' });
 });

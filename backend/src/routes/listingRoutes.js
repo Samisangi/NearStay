@@ -1,25 +1,30 @@
 import express from 'express';
 import {
   createListing,
-  searchListings,
-  getOwnerListings,
   getListingById,
   updateListing,
   deleteListing,
+  getMyListings,
 } from '../controllers/listingController.js';
+import { searchListings } from '../controllers/searchController.js';
 import { protect, requireRole } from '../middleware/auth.js';
-import { upload } from '../middleware/upload.js';
+import { uploadListingPhotos, handleUploadError } from '../middleware/upload.js';
 
 const router = express.Router();
 
-// Public
-router.get('/search', searchListings);
-router.get('/owner/mine', protect, requireRole('owner'), getOwnerListings); // must be before /:id
-router.get('/:id', getListingById);
+const withUpload = (req, res, next) => {
+  uploadListingPhotos(req, res, (err) => {
+    if (err) return handleUploadError(err, req, res, next);
+    next();
+  });
+};
 
-// Owner-authenticated (mutating)
-router.post('/', protect, requireRole('owner'), upload.array('photos', 10), createListing);
-router.patch('/:id', protect, requireRole('owner'), upload.array('photos', 10), updateListing);
+router.get('/search', searchListings);
+router.get('/owner/mine', protect, requireRole('owner'), getMyListings);
+
+router.post('/', protect, requireRole('owner'), withUpload, createListing);
+router.get('/:id', getListingById);
+router.patch('/:id', protect, requireRole('owner'), withUpload, updateListing);
 router.delete('/:id', protect, requireRole('owner'), deleteListing);
 
 export default router;
