@@ -14,6 +14,7 @@ import MyInquiries from './pages/MyInquiries';
 import OwnerDashboard from './pages/owner/Dashboard';
 import AdminPanel from './pages/admin/AdminPanel';
 import NotFound from './pages/NotFound';
+import SeekerDashboard from './pages/seeker/Dashboard';
 
 function App() {
   // Attempts to silently restore a session via the refresh-token cookie
@@ -37,9 +38,10 @@ function App() {
 
         {/* Seeker-only routes */}
         <Route element={<ProtectedRoute allowedRoles={['seeker']} />}>
-          <Route path="/favorites" element={<Favorites />} />
-          <Route path="/my-inquiries" element={<MyInquiries />} />
-        </Route>
+  <Route path="/favorites" element={<Favorites />} />
+  <Route path="/my-inquiries" element={<MyInquiries />} />
+  <Route path="/seeker/dashboard" element={<SeekerDashboard />} />
+</Route>
 
         {/* Owner-only routes */}
         <Route element={<ProtectedRoute allowedRoles={['owner']} />}>
