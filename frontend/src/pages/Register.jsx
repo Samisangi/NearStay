@@ -79,11 +79,45 @@ const Register = () => {
           type="password"
           icon={Lock}
           error={errors.password?.message}
-          {...register('password', {
-            required: 'Password is required',
-            minLength: { value: 6, message: 'At least 6 characters' },
-          })}
+        {...register('password', {
+  required: 'Password is required',
+  minLength: { value: 8, message: 'At least 8 characters' },
+  validate: {
+    hasUpper: (v) => /[A-Z]/.test(v) || 'Must contain an uppercase letter',
+    hasNumber: (v) => /[0-9]/.test(v) || 'Must contain a number',
+    hasSpecial: (v) => /[^A-Za-z0-9]/.test(v) || 'Must contain a special character',
+  },
+})}
         />
+        {/* Add this right after the password Input in Register.jsx */}
+{(() => {
+  const pwd = watch('password') || '';
+  const checks = [
+    { label: '8+ characters', ok: pwd.length >= 8 },
+    { label: 'Uppercase letter', ok: /[A-Z]/.test(pwd) },
+    { label: 'Number', ok: /[0-9]/.test(pwd) },
+    { label: 'Special character', ok: /[^A-Za-z0-9]/.test(pwd) },
+  ];
+  if (!pwd) return null;
+  const score = checks.filter((c) => c.ok).length;
+  const colors = ['bg-danger-500', 'bg-warning-500', 'bg-warning-500', 'bg-teal-400', 'bg-teal-500'];
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-1">
+        {[0,1,2,3].map((i) => (
+          <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < score ? colors[score] : 'bg-paper-300'}`} />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+        {checks.map((c) => (
+          <p key={c.label} className={`text-xs flex items-center gap-1 ${c.ok ? 'text-teal-600' : 'text-ink-400'}`}>
+            <span>{c.ok ? '✓' : '○'}</span>{c.label}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+})()}
 
         {serverError && <p className="text-sm text-danger-500">{serverError}</p>}
 

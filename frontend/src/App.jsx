@@ -15,7 +15,8 @@ import OwnerDashboard from './pages/owner/Dashboard';
 import AdminPanel from './pages/admin/AdminPanel';
 import NotFound from './pages/NotFound';
 import SeekerDashboard from './pages/seeker/Dashboard';
-
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 function App() {
   // Attempts to silently restore a session via the refresh-token cookie
   // on first load, so a page refresh doesn't log the user out.
@@ -35,7 +36,8 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/profile" element={<Profile />} />
         </Route>
-
+<Route path="/forgot-password" element={<ForgotPassword />} />
+<Route path="/reset-password/:token" element={<ResetPassword />} />
         {/* Seeker-only routes */}
         <Route element={<ProtectedRoute allowedRoles={['seeker']} />}>
   <Route path="/favorites" element={<Favorites />} />

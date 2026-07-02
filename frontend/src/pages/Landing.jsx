@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { MapPin, SlidersHorizontal, MessageCircle } from 'lucide-react';
+import { MapPin, SlidersHorizontal } from 'lucide-react';
 import HeroSearchBar from '../components/landing/HeroSearchBar';
 import PopularAreas from '../components/landing/PopularAreas';
 import { MessageCircle } from 'lucide-react';

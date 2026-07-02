@@ -65,7 +65,13 @@ const Login = () => {
           Sign up
         </Link>
       </p>
+      <div className="flex justify-end">
+  <Link to="/forgot-password" className="text-sm text-teal-600 hover:underline">
+    Forgot password?
+  </Link>
+</div>
     </div>
+    
   );
 };
 
