@@ -3,8 +3,9 @@ import {
   createInquiry,
   getOwnerInquiries,
   getSeekerInquiries,
-  updateInquiryStatus,
   getInquiryById,
+  updateInquiryStatus,
+  deleteInquiry,
 } from '../controllers/inquiryController.js';
 import { protect, requireRole } from '../middleware/auth.js';
 
@@ -15,5 +16,6 @@ router.get('/owner', protect, requireRole('owner'), getOwnerInquiries);
 router.get('/seeker', protect, requireRole('seeker'), getSeekerInquiries);
 router.get('/:id', protect, getInquiryById);
 router.patch('/:id/status', protect, requireRole('owner'), updateInquiryStatus);
+router.delete('/:id', protect, deleteInquiry);
 
 export default router;
