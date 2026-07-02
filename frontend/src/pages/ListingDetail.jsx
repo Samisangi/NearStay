@@ -47,17 +47,21 @@ const ListingDetail = () => {
     fetch();
   }, [id]);
 
-  const [sentInquiryId, setSentInquiryId] = useState(null);
+
+const [sentInquiryId, setSentInquiryId] = useState(null);
 
 const handleInquiry = async () => {
   if (!message.trim()) return;
   setSending(true);
   try {
-    const res = await api.post('/inquiries', { listingId: id, message });
+    const res = await api.post('/inquiries', {
+      listingId: id,
+      message,
+    });
     setSentInquiryId(res.data.inquiry._id);
     setSent(true);
-  } catch {
-    alert('Failed to send. Please try again.');
+  } catch (err) {
+    alert(err.response?.data?.message || 'Failed to send. Please try again.');
   } finally {
     setSending(false);
   }
@@ -177,20 +181,44 @@ const handleInquiry = async () => {
           </div>
 
           {user?.role === 'seeker' && !sent && (
-            <div className="bg-paper-50 border border-paper-200 rounded-card p-4 space-y-3">
-              <p className="text-sm font-medium">Send inquiry</p>
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows={3}
-                placeholder="Hi, I'm interested in this room..."
-                className="w-full rounded-control border border-paper-300 bg-paper-50 p-2.5 text-sm resize-none focus-visible:outline-2 focus-visible:outline-teal-500"
-              />
-              <Button onClick={handleInquiry} disabled={sending || !message.trim()} className="w-full">
-                {sending ? 'Sending...' : 'Send message'}
-              </Button>
-            </div>
-          )}
+  <div className="bg-paper-50 border border-paper-200 rounded-card p-4 space-y-3">
+    <p className="text-sm font-medium">Send inquiry</p>
+    <textarea
+      value={message}
+      onChange={(e) => setMessage(e.target.value)}
+      rows={3}
+      placeholder="Hi, I'm interested in this room. Is it still available?"
+      className="w-full rounded-control border border-paper-300 bg-paper-50 p-2.5 text-sm
+        resize-none focus-visible:outline-2 focus-visible:outline-teal-500"
+    />
+    <Button
+      onClick={handleInquiry}
+      disabled={sending || !message.trim()}
+      className="w-full"
+    >
+      {sending ? 'Sending...' : 'Send message'}
+    </Button>
+  </div>
+)}
+
+{user?.role === 'seeker' && sent && sentInquiryId && (
+  <div className="space-y-3">
+    <div className="bg-teal-50 border border-teal-100 rounded-card p-3 text-sm text-teal-700">
+      ✓ Inquiry sent! Continue the conversation below.
+    </div>
+    <ChatWindow inquiryId={sentInquiryId} />
+  </div>
+)}
+
+{!user && (
+  <Button
+    variant="secondary"
+    className="w-full"
+    onClick={() => navigate('/login', { state: { from: location } })}
+  >
+    Log in to contact owner
+  </Button>
+)}
           {sent && (
             <div className="bg-teal-50 border border-teal-100 rounded-card p-4 text-sm text-teal-700">
               Message sent! The owner will respond soon.
