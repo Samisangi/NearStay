@@ -6,7 +6,7 @@ import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Server } from 'socket.io';
-
+import supportRoutes from './routes/supportRoutes.js';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -46,7 +46,7 @@ app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/messages', messageRoutes);
-
+app.use('/api/support', supportRoutes);
 app.use(errorHandler);
 
 const server = http.createServer(app);
