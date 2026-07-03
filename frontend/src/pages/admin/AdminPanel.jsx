@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Ban, CheckCircle, Trash2, MessageSquare, LifeBuoy } from 'lucide-react';
+import { Ban, CheckCircle, Trash2, MessageSquare, LifeBuoy, Megaphone } from 'lucide-react';
 import api from '../../api/axiosInstance';
 import Badge from '../../components/ui/Badge';
 import Skeleton from '../../components/ui/Skeleton';
@@ -19,10 +19,17 @@ const AdminPanel = () => {
   const [replyStatus, setReplyStatus] = useState('resolved');
   const [sending, setSending] = useState(false);
 
+  // Announce state
+  const [announceTarget, setAnnounceTarget] = useState('all');
+  const [announceSubject, setAnnounceSubject] = useState('');
+  const [announceMessage, setAnnounceMessage] = useState('');
+  const [announceSending, setAnnounceSending] = useState(false);
+  const [announceResult, setAnnounceResult] = useState(null);
+
   useEffect(() => {
     setLoading(true);
     const calls = {
-      tickets: api.get('/support'),
+      tickets: api.get('/support/all'),
       listings: api.get('/admin/listings'),
       users: api.get('/admin/users'),
     };
@@ -79,10 +86,31 @@ const AdminPanel = () => {
     setUsers((prev) => prev.map((u) => u._id === id ? { ...u, isBanned: !isBanned } : u));
   };
 
+  const handleAnnounce = async () => {
+    if (!announceSubject.trim() || !announceMessage.trim()) return;
+    setAnnounceSending(true);
+    setAnnounceResult(null);
+    try {
+      const res = await api.post('/admin/announce', {
+        target: announceTarget,
+        subject: announceSubject,
+        message: announceMessage,
+      });
+      setAnnounceResult({ success: true, text: `Sent to ${res.data.sent} recipient(s).` });
+      setAnnounceSubject('');
+      setAnnounceMessage('');
+    } catch (err) {
+      setAnnounceResult({ success: false, text: err.response?.data?.message || 'Failed to send.' });
+    } finally {
+      setAnnounceSending(false);
+    }
+  };
+
   const TABS = [
     { key: 'tickets', label: 'Support tickets', icon: LifeBuoy, count: tickets.filter((t) => t.status === 'open').length },
     { key: 'listings', label: 'Listings', icon: CheckCircle },
     { key: 'users', label: 'Users', icon: Ban },
+    { key: 'announce', label: 'Announce', icon: Megaphone },
   ];
 
   return (
@@ -279,6 +307,127 @@ const AdminPanel = () => {
               )}
             </div>
           ))}
+        </div>
+      )}
+      {/* Announce tab */}
+      {!loading && tab === 'announce' && (
+        <div className="grid md:grid-cols-2 gap-6">
+
+          {/* Form side */}
+          <div className="space-y-5">
+            <div>
+              <h2 className="text-base font-medium mb-1">Send announcement</h2>
+              <p className="text-sm text-ink-500">
+                Email all users, listers, or seekers at once.
+              </p>
+            </div>
+
+            {announceResult && (
+              <div className={`rounded-card p-3 text-sm ${
+                announceResult.success
+                  ? 'bg-teal-50 border border-teal-100 text-teal-700'
+                  : 'bg-red-50 border border-red-100 text-red-700'
+              }`}>
+                {announceResult.text}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-ink-700 mb-1.5">Send to</label>
+              <select
+                value={announceTarget}
+                onChange={(e) => setAnnounceTarget(e.target.value)}
+                className="w-full h-11 rounded-control border border-paper-300 bg-paper-50 px-3 text-sm"
+              >
+                <option value="all">All users (seekers + listers)</option>
+                <option value="owner">Listers (owners) only</option>
+                <option value="seeker">Seekers only</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-ink-700 mb-1.5">Subject</label>
+              <input
+                type="text"
+                value={announceSubject}
+                onChange={(e) => setAnnounceSubject(e.target.value)}
+                placeholder="Email subject line"
+                className="w-full h-11 rounded-control border border-paper-300 bg-paper-50 px-3 text-sm
+                  focus-visible:outline-2 focus-visible:outline-teal-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-ink-700 mb-1.5">Message</label>
+              <textarea
+                rows={6}
+                value={announceMessage}
+                onChange={(e) => setAnnounceMessage(e.target.value)}
+                placeholder="Write your announcement message here..."
+                className="w-full rounded-control border border-paper-300 bg-paper-50 p-3 text-sm
+                  resize-none focus-visible:outline-2 focus-visible:outline-teal-500"
+              />
+            </div>
+
+            <Button
+              onClick={handleAnnounce}
+              disabled={announceSending || !announceSubject.trim() || !announceMessage.trim()}
+              size="sm"
+              className="w-full"
+              icon={Megaphone}
+            >
+              {announceSending ? 'Sending...' : 'Send announcement'}
+            </Button>
+          </div>
+
+          {/* Recipients preview side */}
+          {(() => {
+            const recipients = announceTarget === 'all'
+              ? users.filter(u => u.role !== 'admin')
+              : users.filter(u => u.role === announceTarget);
+            return (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-base font-medium">Recipients</h2>
+                  <span className="text-xs bg-teal-100 text-teal-700 font-medium px-2 py-0.5 rounded-pill">
+                    {recipients.length} {recipients.length === 1 ? 'person' : 'people'}
+                  </span>
+                </div>
+                {recipients.length === 0 ? (
+                  <div className="flex items-center justify-center h-32 border border-dashed border-paper-300 rounded-card">
+                    <p className="text-xs text-ink-400 italic">No recipients for this selection.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                    {recipients.map((u) => (
+                      <div
+                        key={u._id}
+                        className="flex items-center gap-3 bg-paper-50 border border-paper-200 rounded-control px-3 py-2.5"
+                      >
+                        {/* Avatar placeholder */}
+                        <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-semibold text-sm shrink-0 uppercase">
+                          {u.name?.charAt(0) || '?'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-ink-900 truncate">{u.name}</p>
+                          <p className="text-xs text-ink-500 truncate">{u.email}</p>
+                        </div>
+                        <Badge
+                          variant={u.role === 'owner' ? 'teal' : 'neutral'}
+                          className="text-xs capitalize shrink-0"
+                        >
+                          {u.role === 'owner' ? 'Lister' : 'Seeker'}
+                        </Badge>
+                        {u.isBanned && (
+                          <Badge variant="coral" className="text-xs shrink-0">Banned</Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

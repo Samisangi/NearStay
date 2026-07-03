@@ -100,14 +100,18 @@ const Support = () => {
   const [serverError, setServerError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState('all');
-
   useEffect(() => {
+    setLoading(true);
     const params = filter !== 'all' ? `?status=${filter}` : '';
-    api.get(`/support/mine${params}`)
+    const endpoint = user?.role === 'admin'
+      ? `/support/all${params}`
+      : `/support/mine${params}`;
+
+    api.get(endpoint)
       .then((res) => setTickets(res.data.tickets || []))
       .catch(() => setTickets([]))
       .finally(() => setLoading(false));
-  }, [filter]);
+  }, [filter, user?.role]);
 
   const onSubmit = async (data) => {
     setSubmitting(true);
@@ -134,17 +138,21 @@ const Support = () => {
           <LifeBuoy size={22} className="text-teal-600" />
           <h1 className="text-2xl">Support</h1>
         </div>
-        <Button
-          size="sm"
-          icon={Plus}
-          onClick={() => setShowForm((v) => !v)}
-          variant={showForm ? 'secondary' : 'primary'}
-        >
-          {showForm ? 'Cancel' : 'New ticket'}
-        </Button>
+        {user?.role !== 'admin' && (
+          <Button
+            size="sm"
+            icon={Plus}
+            onClick={() => setShowForm((v) => !v)}
+            variant={showForm ? 'secondary' : 'primary'}
+          >
+            {showForm ? 'Cancel' : 'New ticket'}
+          </Button>
+        )}
       </div>
       <p className="text-ink-500 text-sm mb-8">
-        {user?.role === 'owner'
+        {user?.role === 'admin'
+          ? 'View and manage all support tickets from users and listers.'
+          : user?.role === 'owner'
           ? 'Report a problem, complain about a seeker, or get help with your listings.'
           : 'Report a listing issue, complain about an owner, or get account help.'}
       </p>
@@ -227,7 +235,9 @@ const Support = () => {
       {/* Ticket list */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-medium">Your tickets</h2>
+          <h2 className="text-base font-medium">
+            {user?.role === 'admin' ? `All tickets (${tickets.length})` : 'Your tickets'}
+          </h2>
           <select
             value={filter}
             onChange={(e) => { setFilter(e.target.value); setLoading(true); }}
@@ -250,13 +260,17 @@ const Support = () => {
         {!loading && tickets.length === 0 && (
           <div className="text-center py-12 border border-dashed border-paper-300 rounded-card">
             <LifeBuoy size={32} className="text-paper-300 mx-auto mb-3" />
-            <p className="text-ink-500 text-sm">No tickets yet.</p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="text-teal-600 text-sm underline mt-1"
-            >
-              Submit your first ticket
-            </button>
+            <p className="text-ink-500 text-sm">
+              {user?.role === 'admin' ? 'No support tickets found.' : 'No tickets yet.'}
+            </p>
+            {user?.role !== 'admin' && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="text-teal-600 text-sm underline mt-1"
+              >
+                Submit your first ticket
+              </button>
+            )}
           </div>
         )}
 
@@ -265,6 +279,13 @@ const Support = () => {
             {tickets.map((t) => <TicketCard key={t._id} ticket={t} />)}
           </div>
         )}
+        {!loading && tickets.length > 0 && user?.role === 'admin' && (
+  <div className="mt-4 p-3 bg-paper-100 rounded-card text-xs text-ink-500 text-center">
+    Manage and reply to tickets from the{' '}
+    <a href="/admin" className="text-teal-600 underline">Admin Panel</a>
+    {' '}for full controls.
+  </div>
+)}
       </div>
     </div>
   );
