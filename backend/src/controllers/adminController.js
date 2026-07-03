@@ -2,6 +2,7 @@ import asyncHandler from 'express-async-handler';
 import User from '../models/User.js';
 import Listing from '../models/Listing.js';
 import { uploadBufferToCloudinary, deleteFromCloudinary } from '../middleware/upload.js';
+import sendEmail from '../utils/sendEmail.js';
 
 export const getAllUsers = asyncHandler(async (req, res) => {
   const users = await User.find()
@@ -55,4 +56,44 @@ export const uploadAdminAsset = asyncHandler(async (req, res) => {
   if (!req.file) { res.status(400); throw new Error('No file provided'); }
   const url = await uploadBufferToCloudinary(req.file.buffer, 'nearstay/admin');
   res.json({ success: true, url });
+});
+
+// Admin: broadcast email announcement to users by role
+export const broadcastAnnouncement = asyncHandler(async (req, res) => {
+  const { target, subject, message } = req.body;
+
+  if (!subject?.trim() || !message?.trim()) {
+    res.status(400);
+    throw new Error('Subject and message are required');
+  }
+
+  // Build role filter — 'all' means everyone except admins
+  const roleFilter = target === 'all'
+    ? { role: { $in: ['seeker', 'owner'] } }
+    : { role: target };
+
+  const recipients = await User.find({ ...roleFilter, isBanned: false })
+    .select('name email');
+
+  if (recipients.length === 0) {
+    return res.json({ success: true, sent: 0, message: 'No matching recipients found.' });
+  }
+
+  // Send emails in parallel (fire-and-forget errors per recipient)
+  await Promise.allSettled(
+    recipients.map((user) =>
+      sendEmail({
+        to: user.email,
+        subject: `NearStay — ${subject.trim()}`,
+        html: `
+          <p>Hi ${user.name},</p>
+          <div style="white-space:pre-wrap;">${message.trim()}</div>
+          <br/>
+          <p>The NearStay Team</p>
+        `,
+      })
+    )
+  );
+
+  res.json({ success: true, sent: recipients.length });
 });

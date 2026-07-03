@@ -6,6 +6,7 @@ import {
   banUser,
   deleteListingAdmin,
   uploadAdminAsset,
+  broadcastAnnouncement,
 } from '../controllers/adminController.js';
 import { protect, requireRole } from '../middleware/auth.js';
 import { uploadSingle, handleUploadError } from '../middleware/upload.js';
@@ -19,6 +20,8 @@ router.patch('/users/:id/ban', banUser);
 router.get('/listings', getAllListings);
 router.patch('/listings/:id/status', updateListingStatus);
 router.delete('/listings/:id', deleteListingAdmin);
+
+router.post('/announce', broadcastAnnouncement);
 
 router.post(
   '/upload',
