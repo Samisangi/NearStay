@@ -1,44 +1,106 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Map as MapIcon, List as ListIcon, SlidersHorizontal } from 'lucide-react';
+import { useSelector, useDispatch } from 'react-redux';
+import { Map as MapIcon, List as ListIcon, SlidersHorizontal, Loader2 } from 'lucide-react';
 import SearchMap from '../components/map/SearchMap';
 import ListingCard from '../components/listing/ListingCard';
 import Button from '../components/ui/Button';
-import { MOCK_LISTINGS } from '../mocks/listings';
+import api from '../api/axiosInstance';
+import { toggleFavoriteLocal, setFavoriteIds } from '../redux/favoritesSlice';
+import { selectIsAuthenticated } from '../redux/authSlice';
 import { cn } from '../lib/cn';
 
 const SORT_OPTIONS = [
   { value: 'distance', label: 'Distance' },
-  { value: 'price_low', label: 'Price: low to high' },
-  { value: 'price_high', label: 'Price: high to low' },
+  { value: 'rent_asc', label: 'Price: low to high' },
+  { value: 'rent_desc', label: 'Price: high to low' },
 ];
 
 const Search = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const lat = parseFloat(searchParams.get('lat')) || 27.7032;
-  const lng = parseFloat(searchParams.get('lng')) || 68.8589;
-  const label = searchParams.get('label') || 'Sukkur';
+  const dispatch = useDispatch();
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const favoriteIds = useSelector((s) => s.favorites.ids);
 
-  const [mobileView, setMobileView] = useState('list'); // 'list' | 'map'
+  const lat = parseFloat(searchParams.get('lat')) || null;
+  const lng = parseFloat(searchParams.get('lng')) || null;
+  const label = searchParams.get('label') || 'your area';
+
+  const [mobileView, setMobileView] = useState('list');
   const [hoveredId, setHoveredId] = useState(null);
-  const [favorites, setFavorites] = useState([]);
   const [sortBy, setSortBy] = useState('distance');
-  const [radius, setRadius] = useState(5000);
+  const [radius, setRadius] = useState(5);        // km
   const [maxRent, setMaxRent] = useState('');
 
-  // TODO: replace with real GET /api/listings/search?lat=&lng=&maxDistance=... call
-  const listings = useMemo(() => {
-    let result = MOCK_LISTINGS.filter((l) => l.distance <= radius);
-    if (maxRent) result = result.filter((l) => l.rent <= parseFloat(maxRent));
-    if (sortBy === 'price_low') result = [...result].sort((a, b) => a.rent - b.rent);
-    else if (sortBy === 'price_high') result = [...result].sort((a, b) => b.rent - a.rent);
-    else result = [...result].sort((a, b) => a.distance - b.distance);
-    return result;
-  }, [radius, maxRent, sortBy]);
+  const [listings, setListings] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const toggleFavorite = (id) => {
-    setFavorites((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  // ── Fetch listings from the real API ────────────────────────────────────────
+  const fetchListings = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const params = {
+        status: 'active',
+        sort: sortBy,
+        radius,
+        limit: 50,
+      };
+
+      if (lat && lng) {
+        params.lat = lat;
+        params.lng = lng;
+      }
+
+      if (maxRent) params.maxRent = maxRent;
+
+      const res = await api.get('/listings/search', { params });
+      setListings(res.data.listings || []);
+      setTotal(res.data.total || 0);
+    } catch (err) {
+      console.error('Search failed:', err);
+      setError('Could not load listings. Please try again.');
+      setListings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [lat, lng, sortBy, radius, maxRent]);
+
+  // Re-fetch whenever filters change
+  useEffect(() => {
+    fetchListings();
+  }, [fetchListings]);
+
+  // ── Load user's saved favorites ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    api
+      .get('/favorites/ids')
+      .then((res) => {
+        dispatch(setFavoriteIds(res.data.ids || []));
+      })
+      .catch(() => {}); // non-critical
+  }, [isAuthenticated, dispatch]);
+
+  // ── Toggle favorite ─────────────────────────────────────────────────────────
+  const handleToggleFavorite = async (id) => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    dispatch(toggleFavoriteLocal(id)); // optimistic
+    try {
+      if (favoriteIds.includes(id)) {
+        await api.delete(`/favorites/${id}`);
+      } else {
+        await api.post(`/favorites/${id}`);
+      }
+    } catch {
+      dispatch(toggleFavoriteLocal(id)); // rollback on error
+    }
   };
 
   return (
@@ -71,16 +133,14 @@ const Search = () => {
             <SlidersHorizontal size={14} className="text-ink-500" />
             <input
               type="range"
-              min={500}
-              max={10000}
-              step={500}
+              min={1}
+              max={25}
+              step={1}
               value={radius}
               onChange={(e) => setRadius(Number(e.target.value))}
               className="w-28"
             />
-            <span className="distance-figure text-xs text-ink-500 w-12">
-              {radius >= 1000 ? `${(radius / 1000).toFixed(1)}km` : `${radius}m`}
-            </span>
+            <span className="text-xs text-ink-500 w-12">{radius} km</span>
           </div>
 
           {/* Mobile map/list toggle */}
@@ -103,35 +163,54 @@ const Search = () => {
 
       {/* Split view */}
       <div className="flex-1 flex overflow-hidden">
+        {/* Listings panel */}
         <div
           className={cn(
             'w-full sm:w-[45%] lg:w-[40%] overflow-y-auto p-4 sm:p-6',
             mobileView === 'map' && 'hidden sm:block'
           )}
         >
-          <p className="text-sm text-ink-500 mb-4">{listings.length} rooms found</p>
+          {/* Status line */}
+          {loading ? (
+            <div className="flex items-center gap-2 text-sm text-ink-500 mb-4">
+              <Loader2 size={14} className="animate-spin" />
+              <span>Finding rooms…</span>
+            </div>
+          ) : error ? (
+            <p className="text-sm text-danger-500 mb-4">{error}</p>
+          ) : (
+            <p className="text-sm text-ink-500 mb-4">
+              {total} room{total !== 1 ? 's' : ''} found
+            </p>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
             {listings.map((listing, i) => (
               <ListingCard
                 key={listing._id}
                 listing={listing}
                 index={i}
-                isFavorited={favorites.includes(listing._id)}
-                onToggleFavorite={toggleFavorite}
+                isFavorited={favoriteIds.includes(listing._id?.toString())}
+                onToggleFavorite={handleToggleFavorite}
                 onHover={setHoveredId}
                 isHighlighted={hoveredId === listing._id}
                 onClick={(l) => navigate(`/listings/${l._id}`)}
               />
             ))}
-            {listings.length === 0 && (
-              <p className="text-sm text-ink-500 col-span-full">No rooms match these filters - try widening the radius.</p>
+
+            {!loading && listings.length === 0 && !error && (
+              <div className="col-span-full text-center py-10">
+                <p className="text-sm text-ink-500">No rooms found in this area.</p>
+                <p className="text-xs text-ink-400 mt-1">Try increasing the radius or removing filters.</p>
+              </div>
             )}
           </div>
         </div>
 
+        {/* Map panel */}
         <div className={cn('flex-1 p-4 sm:p-6 pl-0 sm:pl-0', mobileView === 'list' && 'hidden sm:block')}>
           <SearchMap
-            center={[lat, lng]}
+            center={lat && lng ? [lat, lng] : [27.7032, 68.8589]}
             listings={listings}
             highlightedId={hoveredId}
             onMarkerHover={setHoveredId}

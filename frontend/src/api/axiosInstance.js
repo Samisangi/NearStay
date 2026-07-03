@@ -30,7 +30,12 @@ api.interceptors.response.use(
 
     // Only attempt a refresh on 401s, and only once per request
     // (the _retry flag prevents an infinite loop if refresh itself fails).
-    if (response?.status === 401 && !config._retry) {
+    // Also skip if: the failing request IS the refresh endpoint (would loop forever),
+    // or if there's no access token at all (user simply isn't logged in — no point refreshing).
+    const isRefreshEndpoint = config?.url?.includes('/auth/refresh-token');
+    const hasToken = !!store.getState().auth.accessToken;
+
+    if (response?.status === 401 && !config._retry && !isRefreshEndpoint && hasToken) {
       config._retry = true;
 
       try {

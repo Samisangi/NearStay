@@ -25,6 +25,8 @@ export const geocodeAddress = async (query) => {
       // Nominatim's usage policy requires a descriptive User-Agent or
       // Referer identifying the application - browsers set Referer
       // automatically, but we set this for clarity/compliance intent.
+            'User-Agent': 'NearStay/1.0 (nearstay.app)',
+
       'Accept-Language': 'en',
     },
   });

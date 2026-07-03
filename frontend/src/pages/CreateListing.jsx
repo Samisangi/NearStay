@@ -50,10 +50,11 @@ const CreateListing = () => {
       selectedAmenities.forEach((a) => form.append('amenities', a));
       photos.forEach((f) => form.append('photos', f));
 
+      let response;
       if (id) {
-        await api.patch(`/listings/${id}`, form);
+        response = await api.patch(`/listings/${id}`, form);
       } else {
-        await api.post('/listings', form);
+        response = await api.post('/listings', form);
       }
       navigate('/owner/dashboard');
     } catch (err) {
