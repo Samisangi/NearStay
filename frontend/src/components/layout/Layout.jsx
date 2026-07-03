@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from './Navbar';
 import Footer from './Footer';
+import { LifeBuoy } from 'lucide-react';
 
 /**
  * Top-level shell rendered once; <Outlet/> swaps in the matched page.

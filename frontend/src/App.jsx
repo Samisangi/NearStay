@@ -17,6 +17,7 @@ import NotFound from './pages/NotFound';
 import SeekerDashboard from './pages/seeker/Dashboard';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Support from './pages/Support';
 function App() {
   // Attempts to silently restore a session via the refresh-token cookie
   // on first load, so a page refresh doesn't log the user out.
@@ -31,7 +32,7 @@ function App() {
         <Route path="/listings/:id" element={<ListingDetail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-
+<Route path="/support" element={<Support />} />
         {/* Any authenticated user (seeker, owner, or admin) */}
         <Route element={<ProtectedRoute />}>
           <Route path="/profile" element={<Profile />} />

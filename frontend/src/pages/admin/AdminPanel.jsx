@@ -1,18 +1,35 @@
 import { useEffect, useState } from 'react';
-import { Ban, CheckCircle, Trash2 } from 'lucide-react';
+import { Ban, CheckCircle, Trash2, MessageSquare, LifeBuoy } from 'lucide-react';
 import api from '../../api/axiosInstance';
 import Badge from '../../components/ui/Badge';
 import Skeleton from '../../components/ui/Skeleton';
+import Button from '../../components/ui/Button';
+
+const PRIORITY_COLOR = { low: 'neutral', medium: 'teal', high: 'coral' };
+const STATUS_COLOR = { open: 'coral', in_review: 'teal', resolved: 'success', closed: 'neutral' };
 
 const AdminPanel = () => {
-  const [tab, setTab] = useState('listings');
+  const [tab, setTab] = useState('tickets');
   const [listings, setListings] = useState([]);
   const [users, setUsers] = useState([]);
+  const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [reply, setReply] = useState('');
+  const [replyStatus, setReplyStatus] = useState('resolved');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    Promise.all([api.get('/admin/listings'), api.get('/admin/users')])
-      .then(([lRes, uRes]) => {
+    setLoading(true);
+    const calls = {
+      tickets: api.get('/support'),
+      listings: api.get('/admin/listings'),
+      users: api.get('/admin/users'),
+    };
+
+    Promise.all(Object.values(calls))
+      .then(([tRes, lRes, uRes]) => {
+        setTickets(tRes.data.tickets || []);
         setListings(lRes.data.listings || []);
         setUsers(uRes.data.users || []);
       })
@@ -20,35 +37,205 @@ const AdminPanel = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleReply = async () => {
+    if (!reply.trim()) return;
+    setSending(true);
+    try {
+      const res = await api.patch(`/support/${selectedTicket._id}/reply`, {
+        adminReply: reply,
+        status: replyStatus,
+      });
+      setTickets((prev) =>
+        prev.map((t) => t._id === selectedTicket._id ? res.data.ticket : t)
+      );
+      setSelectedTicket(res.data.ticket);
+      setReply('');
+    } catch {} finally {
+      setSending(false);
+    }
+  };
+
+  const handleTicketStatus = async (id, status) => {
+    const res = await api.patch(`/support/${id}/status`, { status });
+    setTickets((prev) => prev.map((t) => t._id === id ? res.data.ticket : t));
+    if (selectedTicket?._id === id) setSelectedTicket(res.data.ticket);
+  };
+
+  const handleDeleteTicket = async (id) => {
+    if (!confirm('Delete this ticket?')) return;
+    await api.delete(`/support/${id}`);
+    setTickets((prev) => prev.filter((t) => t._id !== id));
+    if (selectedTicket?._id === id) setSelectedTicket(null);
+  };
+
   const toggleListingStatus = async (id, currentStatus) => {
     const status = currentStatus === 'active' ? 'inactive' : 'active';
-    await api.patch(`/admin/listings/${id}/status`, { status });
-    setListings((prev) => prev.map((l) => l._id === id ? { ...l, status } : l));
+    const res = await api.patch(`/admin/listings/${id}/status`, { status });
+    setListings((prev) => prev.map((l) => l._id === id ? res.data.listing : l));
   };
 
   const toggleBanUser = async (id, isBanned) => {
-    await api.patch(`/admin/users/${id}/ban`, { isBanned: !isBanned });
+    const res = await api.patch(`/admin/users/${id}/ban`, { isBanned: !isBanned });
     setUsers((prev) => prev.map((u) => u._id === id ? { ...u, isBanned: !isBanned } : u));
   };
 
+  const TABS = [
+    { key: 'tickets', label: 'Support tickets', icon: LifeBuoy, count: tickets.filter((t) => t.status === 'open').length },
+    { key: 'listings', label: 'Listings', icon: CheckCircle },
+    { key: 'users', label: 'Users', icon: Ban },
+  ];
+
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10">
+    <div className="max-w-6xl mx-auto px-6 py-10">
       <h1 className="text-2xl mb-6">Admin panel</h1>
 
       <div className="flex gap-1 border-b border-paper-200 mb-6">
-        {['listings', 'users'].map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium capitalize border-b-2 -mb-px transition-colors
-              ${tab === t ? 'border-teal-500 text-teal-600' : 'border-transparent text-ink-500'}`}>
-            {t}
+        {TABS.map(({ key, label, icon: Icon, count }) => (
+          <button key={key} onClick={() => setTab(key)}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+              ${tab === key ? 'border-teal-500 text-teal-600' : 'border-transparent text-ink-500'}`}>
+            <Icon size={15} />
+            {label}
+            {count > 0 && (
+              <span className="h-5 min-w-5 px-1 rounded-full bg-coral-500 text-white text-xs flex items-center justify-center">
+                {count}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       {loading && [...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 w-full mb-3" />)}
 
+      {/* Support Tickets */}
+      {!loading && tab === 'tickets' && (
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Ticket list */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-ink-500">{tickets.length} total · {tickets.filter(t => t.status === 'open').length} open</p>
+            </div>
+            {tickets.length === 0 && <p className="text-ink-500 text-sm">No tickets yet.</p>}
+            {tickets.map((t) => (
+              <div
+                key={t._id}
+                onClick={() => setSelectedTicket(t)}
+                className={`p-4 rounded-card border cursor-pointer transition-all
+                  ${selectedTicket?._id === t._id
+                    ? 'border-teal-500 bg-teal-50'
+                    : 'border-paper-200 bg-paper-50 hover:border-teal-300'}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{t.subject}</p>
+                    <p className="text-xs text-ink-500 mt-0.5">
+                      {t.userId?.name} ({t.userId?.role}) · {t.category?.replace('_', ' ')}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1 items-end shrink-0">
+                    <Badge variant={STATUS_COLOR[t.status]} className="text-xs capitalize">
+                      {t.status.replace('_', ' ')}
+                    </Badge>
+                    <Badge variant={PRIORITY_COLOR[t.priority]} className="text-xs capitalize">
+                      {t.priority}
+                    </Badge>
+                  </div>
+                </div>
+                <p className="text-xs text-ink-400 mt-2 truncate">{t.message}</p>
+                <p className="text-xs text-ink-300 mt-1">{new Date(t.createdAt).toLocaleDateString()}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Ticket detail + reply */}
+          <div>
+            {selectedTicket ? (
+              <div className="sticky top-24 bg-paper-50 border border-paper-200 rounded-card p-5 space-y-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-medium">{selectedTicket.subject}</h3>
+                    <p className="text-xs text-ink-500 mt-0.5">
+                      From: {selectedTicket.userId?.name} — {selectedTicket.userId?.email}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteTicket(selectedTicket._id)}
+                    className="p-1.5 text-ink-400 hover:text-danger-500"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+
+                <div className="bg-paper-100 rounded-control p-3">
+                  <p className="text-xs font-medium text-ink-500 mb-1 capitalize">
+                    {selectedTicket.category?.replace('_', ' ')}
+                  </p>
+                  <p className="text-sm text-ink-700 whitespace-pre-wrap">{selectedTicket.message}</p>
+                </div>
+
+                {selectedTicket.adminReply && (
+                  <div className="bg-teal-50 border border-teal-100 rounded-control p-3">
+                    <p className="text-xs font-medium text-teal-700 mb-1">Your previous reply</p>
+                    <p className="text-sm text-teal-800 whitespace-pre-wrap">{selectedTicket.adminReply}</p>
+                  </div>
+                )}
+
+                {/* Status quick-change */}
+                <div className="flex gap-2">
+                  {['open', 'in_review', 'resolved', 'closed'].map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => handleTicketStatus(selectedTicket._id, s)}
+                      className={`px-2 py-1 rounded-pill text-xs capitalize transition-colors
+                        ${selectedTicket.status === s
+                          ? 'bg-teal-500 text-white'
+                          : 'bg-paper-200 text-ink-600 hover:bg-paper-300'}`}
+                    >
+                      {s.replace('_', ' ')}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Reply form */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-ink-700">Reply to user</label>
+                  <textarea
+                    rows={4}
+                    value={reply}
+                    onChange={(e) => setReply(e.target.value)}
+                    placeholder="Type your reply..."
+                    className="w-full rounded-control border border-paper-300 bg-paper-50 p-3 text-sm
+                      resize-none focus-visible:outline-2 focus-visible:outline-teal-500"
+                  />
+                  <div className="flex gap-2 items-center">
+                    <select
+                      value={replyStatus}
+                      onChange={(e) => setReplyStatus(e.target.value)}
+                      className="h-9 text-sm rounded-control border border-paper-300 bg-paper-50 px-2"
+                    >
+                      <option value="in_review">Mark In Review</option>
+                      <option value="resolved">Mark Resolved</option>
+                      <option value="closed">Mark Closed</option>
+                    </select>
+                    <Button onClick={handleReply} disabled={sending || !reply.trim()} size="sm" className="flex-1">
+                      {sending ? 'Sending...' : 'Send reply'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="h-48 flex items-center justify-center border border-dashed border-paper-300 rounded-card">
+                <p className="text-ink-400 text-sm">Select a ticket to view and reply</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Listings tab */}
       {!loading && tab === 'listings' && (
         <div className="space-y-3">
+          {listings.length === 0 && <p className="text-ink-500">No listings found.</p>}
           {listings.map((l) => (
             <div key={l._id} className="bg-paper-50 border border-paper-200 rounded-card p-4 flex items-center gap-4">
               <div className="flex-1 min-w-0">
@@ -67,12 +254,13 @@ const AdminPanel = () => {
               </button>
             </div>
           ))}
-          {listings.length === 0 && <p className="text-ink-500">No listings found.</p>}
         </div>
       )}
 
+      {/* Users tab */}
       {!loading && tab === 'users' && (
         <div className="space-y-3">
+          {users.length === 0 && <p className="text-ink-500">No users found.</p>}
           {users.map((u) => (
             <div key={u._id} className="bg-paper-50 border border-paper-200 rounded-card p-4 flex items-center gap-4">
               <div className="flex-1 min-w-0">
@@ -84,14 +272,13 @@ const AdminPanel = () => {
                 <button
                   onClick={() => toggleBanUser(u._id, u.isBanned)}
                   className={`p-1.5 shrink-0 ${u.isBanned ? 'text-success-500' : 'text-ink-500 hover:text-danger-500'}`}
-                  title={u.isBanned ? 'Unban' : 'Ban'}
+                  title={u.isBanned ? 'Unban' : 'Ban user'}
                 >
                   <Ban size={16} />
                 </button>
               )}
             </div>
           ))}
-          {users.length === 0 && <p className="text-ink-500">No users found.</p>}
         </div>
       )}
     </div>

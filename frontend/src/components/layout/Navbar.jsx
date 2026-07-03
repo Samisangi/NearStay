@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Heart, LayoutDashboard, MapPin, MessageSquare, ShieldCheck, User } from 'lucide-react';
+import { Heart, LifeBuoy, LayoutDashboard, MapPin, MessageSquare, ShieldCheck, User } from 'lucide-react';
 import { selectCurrentUser, selectIsAuthenticated, logout } from '../../redux/authSlice';
 import api from '../../api/axiosInstance';
 import Button from '../ui/Button';
@@ -64,7 +64,11 @@ const Navbar = () => {
               <Button variant="ghost" size="sm" icon={ShieldCheck}>Admin</Button>
             </Link>
           )}
-
+          {isAuthenticated && (
+  <Link to="/support">
+    <Button variant="ghost" size="sm" icon={LifeBuoy}>Support</Button>
+  </Link>
+)}
           {isAuthenticated && (
             <>
               <Link to="/profile" aria-label="Profile">
