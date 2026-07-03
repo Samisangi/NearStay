@@ -105,7 +105,12 @@ export const searchListings = asyncHandler(async (req, res) => {
       if (coordinates) sortStage.distance = 1;
       else sortStage.createdAt = -1;
   }
-  pipeline.push({ $sort: sortStage });
+  // Guard: never push an empty $sort — MongoDB rejects it
+  if (Object.keys(sortStage).length > 0) {
+    pipeline.push({ $sort: sortStage });
+  } else {
+    pipeline.push({ $sort: { createdAt: -1 } });
+  }
 
   // ── 6. Count total (before pagination) ────────────────────────────────────
   const countPipeline = [...pipeline, { $count: 'total' }];
@@ -121,10 +126,21 @@ export const searchListings = asyncHandler(async (req, res) => {
       localField: 'ownerId',
       foreignField: '_id',
       as: 'owner',
-      pipeline: [{ $project: { name: 1, profilePicture: 1, phone: 1 } }],
     },
   });
-  pipeline.push({ $unwind: { path: '$owner', preserveNullAndEmpty: true } });
+  // preserveNullAndEmptyArrays keeps listings that have no matching owner
+  pipeline.push({ $unwind: { path: '$owner', preserveNullAndEmptyArrays: true } });
+  // Only expose safe owner fields to the frontend
+  pipeline.push({
+    $addFields: {
+      owner: {
+        _id: '$owner._id',
+        name: '$owner.name',
+        profilePicture: '$owner.profilePicture',
+        phone: '$owner.phone',
+      },
+    },
+  });
 
   // ── 9. Execute ────────────────────────────────────────────────────────────
   const [listings, countResult] = await Promise.all([

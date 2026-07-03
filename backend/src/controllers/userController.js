@@ -23,12 +23,12 @@ export const updateMe = asyncHandler(async (req, res) => {
 
   // Handle profile picture upload
   if (req.file) {
-    // Delete old picture from Cloudinary if it exists
+    // Delete old picture if it exists
     if (req.user.profilePicture) {
       await deleteFromCloudinary(req.user.profilePicture);
     }
     req.user.profilePicture = await uploadBufferToCloudinary(
-      req.file.buffer,
+      req.file,
       'nearstay/profiles'
     );
   }

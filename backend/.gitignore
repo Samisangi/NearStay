@@ -48,3 +48,8 @@ coverage/
 *.pid
 *.seed
 *.pid.lock
+
+# ========================
+# User Uploads (local storage)
+# ========================
+uploads/

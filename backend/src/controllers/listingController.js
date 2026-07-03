@@ -21,9 +21,14 @@ export const createListing = asyncHandler(async (req, res) => {
 
   let photoUrls = [];
   if (req.files?.length) {
-    photoUrls = await Promise.all(
-      req.files.map((f) => uploadBufferToCloudinary(f.buffer, 'nearstay/listings'))
-    );
+    try {
+      photoUrls = await Promise.all(
+        req.files.map((f) => uploadBufferToCloudinary(f, 'nearstay/listings'))
+      );
+    } catch (uploadErr) {
+      res.status(500);
+      throw new Error(`Image upload failed: ${uploadErr.message}`);
+    }
   }
 
   const amenitiesArr = Array.isArray(amenities)
@@ -100,10 +105,15 @@ export const updateListing = asyncHandler(async (req, res) => {
 
   // Upload new photos and append
   if (req.files?.length) {
-    const newUrls = await Promise.all(
-      req.files.map((f) => uploadBufferToCloudinary(f.buffer, 'nearstay/listings'))
-    );
-    listing.photos = [...listing.photos, ...newUrls];
+    try {
+      const newUrls = await Promise.all(
+        req.files.map((f) => uploadBufferToCloudinary(f, 'nearstay/listings'))
+      );
+      listing.photos = [...listing.photos, ...newUrls];
+    } catch (uploadErr) {
+      res.status(500);
+      throw new Error(`Image upload failed: ${uploadErr.message}`);
+    }
   }
 
   // Update cover photo

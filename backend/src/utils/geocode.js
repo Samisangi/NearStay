@@ -17,6 +17,13 @@ export async function geocodeAddress(address) {
   const userAgent =
     process.env.NOMINATIM_USER_AGENT || 'NearStay/1.0 (contact@nearstay.com)';
 
+  // Detect unconfigured placeholder — Nominatim will 403 or ban placeholder UAs
+  if (userAgent.includes('your_contact_email')) {
+    throw new Error(
+      'Geocoding is not configured. Set NOMINATIM_USER_AGENT in your .env file with a real email address.'
+    );
+  }
+
   const url = new URL(NOMINATIM_BASE);
   url.searchParams.set('q', address);
   url.searchParams.set('format', 'json');
@@ -30,6 +37,11 @@ export async function geocodeAddress(address) {
   });
 
   if (!response.ok) {
+    if (response.status === 403) {
+      throw new Error(
+        'Geocoding failed (403): Nominatim rejected the request. Ensure NOMINATIM_USER_AGENT in .env has a real app name and contact email.'
+      );
+    }
     throw new Error(`Nominatim request failed: ${response.status} ${response.statusText}`);
   }
 
