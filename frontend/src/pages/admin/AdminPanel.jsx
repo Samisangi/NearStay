@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Ban, Mapin, CheckCircle, Trash2, MessageSquare, LifeBuoy, Megaphone } from 'lucide-react';
+import { Ban, MapPin, CheckCircle, Trash2, MessageSquare, LifeBuoy, Megaphone } from 'lucide-react';
 import api from '../../api/axiosInstance';
 import Badge from '../../components/ui/Badge';
 import Skeleton from '../../components/ui/Skeleton';
@@ -44,7 +44,7 @@ areas: api.get('/featured-areas/all'),
         setTickets(tRes.data.tickets || []);
         setListings(lRes.data.listings || []);
         setUsers(uRes.data.users || []);
-          setAreas(aRes.data.areas || []);
+          setAreas(aRes.data.data || []);
 
       })
       .catch(() => {})
@@ -317,6 +317,160 @@ areas: api.get('/featured-areas/all'),
           ))}
         </div>
       )}
+      {/* Featured Areas tab */}
+{!loading && tab === 'areas' && (
+  <div className="grid md:grid-cols-2 gap-8">
+    {/* Add new area form */}
+    <div className="bg-paper-50 border border-paper-200 rounded-card p-5 space-y-4">
+      <h2 className="text-base font-medium">Add new area</h2>
+
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-ink-700 mb-1.5">Label</label>
+          <input
+            type="text"
+            placeholder="e.g. Karachi University"
+            value={areaForm.label}
+            onChange={(e) => setAreaForm((p) => ({ ...p, label: e.target.value }))}
+            className="w-full h-10 rounded-control border border-paper-300 bg-paper-50 px-3 text-sm focus-visible:outline-2 focus-visible:outline-teal-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-ink-700 mb-1.5">City</label>
+          <input
+            type="text"
+            placeholder="e.g. Karachi"
+            value={areaForm.city}
+            onChange={(e) => setAreaForm((p) => ({ ...p, city: e.target.value }))}
+            className="w-full h-10 rounded-control border border-paper-300 bg-paper-50 px-3 text-sm focus-visible:outline-2 focus-visible:outline-teal-500"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-ink-700 mb-1.5">Latitude</label>
+            <input
+              type="number"
+              step="any"
+              placeholder="24.8607"
+              value={areaForm.lat}
+              onChange={(e) => setAreaForm((p) => ({ ...p, lat: e.target.value }))}
+              className="w-full h-10 rounded-control border border-paper-300 bg-paper-50 px-3 text-sm focus-visible:outline-2 focus-visible:outline-teal-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-ink-700 mb-1.5">Longitude</label>
+            <input
+              type="number"
+              step="any"
+              placeholder="67.0011"
+              value={areaForm.lng}
+              onChange={(e) => setAreaForm((p) => ({ ...p, lng: e.target.value }))}
+              className="w-full h-10 rounded-control border border-paper-300 bg-paper-50 px-3 text-sm focus-visible:outline-2 focus-visible:outline-teal-500"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-ink-700 mb-1.5">Display order</label>
+          <input
+            type="number"
+            value={areaForm.order}
+            onChange={(e) => setAreaForm((p) => ({ ...p, order: parseInt(e.target.value) || 0 }))}
+            className="w-full h-10 rounded-control border border-paper-300 bg-paper-50 px-3 text-sm focus-visible:outline-2 focus-visible:outline-teal-500"
+          />
+          <p className="text-xs text-ink-400 mt-1">Lower number = shown first</p>
+        </div>
+      </div>
+
+      <p className="text-xs text-ink-400">
+        Get coordinates from{' '}
+        <a href="https://www.latlong.net" target="_blank" rel="noreferrer" className="text-teal-600 underline">
+          latlong.net
+        </a>
+        {' '}— search the area name and copy lat/lng.
+      </p>
+
+      {areaError && <p className="text-sm text-danger-500">{areaError}</p>}
+
+      <Button
+        disabled={savingArea}
+        onClick={async () => {
+          if (!areaForm.label || !areaForm.city || !areaForm.lat || !areaForm.lng) {
+            setAreaError('All fields except order are required');
+            return;
+          }
+          setSavingArea(true);
+          setAreaError('');
+          try {
+            const res = await api.post('/featured-areas', {
+              ...areaForm,
+              lat: parseFloat(areaForm.lat),
+              lng: parseFloat(areaForm.lng),
+            });
+            setAreas((prev) => [...prev, res.data.data]);
+            setAreaForm({ label: '', city: '', lat: '', lng: '', order: 0 });
+          } catch (err) {
+            setAreaError(err.response?.data?.message || 'Failed to add area');
+          } finally {
+            setSavingArea(false);
+          }
+        }}
+        className="w-full"
+      >
+        {savingArea ? 'Adding...' : 'Add area'}
+      </Button>
+    </div>
+
+    {/* Existing areas list */}
+    <div>
+      <h2 className="text-base font-medium mb-4">
+        Current areas ({areas.length})
+      </h2>
+      {areas.length === 0 && (
+        <p className="text-ink-500 text-sm">No areas added yet.</p>
+      )}
+      <div className="space-y-2">
+        {areas.map((area) => (
+          <div key={area._id}
+            className="bg-paper-50 border border-paper-200 rounded-card p-3 flex items-center gap-3">
+            <MapPin size={16} className="text-teal-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">{area.label}</p>
+              <p className="text-xs text-ink-500">{area.city} · {area.lat}, {area.lng}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={async () => {
+                  const res = await api.patch(`/featured-areas/${area._id}`, {
+                    isActive: !area.isActive,
+                  });
+                  setAreas((prev) =>
+                    prev.map((a) => a._id === area._id ? res.data.data : a)
+                  );
+                }}
+                className={`text-xs px-2 py-1 rounded-pill transition-colors
+                  ${area.isActive
+                    ? 'bg-teal-50 text-teal-700 hover:bg-teal-100'
+                    : 'bg-paper-200 text-ink-500 hover:bg-paper-300'}`}
+              >
+                {area.isActive ? 'Active' : 'Hidden'}
+              </button>
+              <button
+                onClick={async () => {
+                  if (!confirm(`Delete "${area.label}"?`)) return;
+                  await api.delete(`/featured-areas/${area._id}`);
+                  setAreas((prev) => prev.filter((a) => a._id !== area._id));
+                }}
+                className="p-1 text-ink-400 hover:text-danger-500"
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
       {/* Announce tab */}
       {!loading && tab === 'announce' && (
         <div className="grid md:grid-cols-2 gap-6">

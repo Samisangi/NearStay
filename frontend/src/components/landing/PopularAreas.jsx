@@ -9,7 +9,7 @@ const PopularAreas = () => {
 
   useEffect(() => {
     api.get('/featured-areas')
-      .then((res) => setAreas(res.data.areas || []))
+      .then((res) => setAreas(res.data.data || []))
       .catch(() => setAreas([]));
   }, []);
 
