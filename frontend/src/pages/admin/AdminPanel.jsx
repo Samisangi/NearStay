@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Ban, CheckCircle, Trash2, MessageSquare, LifeBuoy, Megaphone } from 'lucide-react';
+import { Ban, Mapin, CheckCircle, Trash2, MessageSquare, LifeBuoy, Megaphone } from 'lucide-react';
 import api from '../../api/axiosInstance';
 import Badge from '../../components/ui/Badge';
 import Skeleton from '../../components/ui/Skeleton';
@@ -18,7 +18,10 @@ const AdminPanel = () => {
   const [reply, setReply] = useState('');
   const [replyStatus, setReplyStatus] = useState('resolved');
   const [sending, setSending] = useState(false);
-
+const [areas, setAreas] = useState([]);
+const [areaForm, setAreaForm] = useState({ label: '', city: '', lat: '', lng: '', order: 0 });
+const [areaError, setAreaError] = useState('');
+const [savingArea, setSavingArea] = useState(false);
   // Announce state
   const [announceTarget, setAnnounceTarget] = useState('all');
   const [announceSubject, setAnnounceSubject] = useState('');
@@ -32,13 +35,17 @@ const AdminPanel = () => {
       tickets: api.get('/support/all'),
       listings: api.get('/admin/listings'),
       users: api.get('/admin/users'),
+      // add this line inside Promise.all calls object:
+areas: api.get('/featured-areas/all'),
     };
 
     Promise.all(Object.values(calls))
-      .then(([tRes, lRes, uRes]) => {
+      .then(([tRes, lRes, uRes, aRes]) => {
         setTickets(tRes.data.tickets || []);
         setListings(lRes.data.listings || []);
         setUsers(uRes.data.users || []);
+          setAreas(aRes.data.areas || []);
+
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -110,6 +117,7 @@ const AdminPanel = () => {
     { key: 'tickets', label: 'Support tickets', icon: LifeBuoy, count: tickets.filter((t) => t.status === 'open').length },
     { key: 'listings', label: 'Listings', icon: CheckCircle },
     { key: 'users', label: 'Users', icon: Ban },
+    { key: 'areas', label: 'Featured areas', icon: MapPin },
     { key: 'announce', label: 'Announce', icon: Megaphone },
   ];
 
