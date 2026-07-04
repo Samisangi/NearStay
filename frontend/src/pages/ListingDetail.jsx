@@ -10,7 +10,7 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Skeleton from '../components/ui/Skeleton';
 import ChatWindow from '../components/chat/ChatWindow';
-
+import ReviewSection from '../components/listing/ReviewSection';
 const AMENITY_MAP = {
   wifi: { label: 'WiFi', icon: Wifi },
   ac: { label: 'AC', icon: Snowflake },
@@ -170,6 +170,10 @@ const handleInquiry = async () => {
               </MapContainer>
             </div>
           </div>
+          {/* Reviews */}
+<div className="border-t border-paper-200 pt-6">
+  <ReviewSection listingId={id} />
+</div>
         </div>
 
         {/* Right: contact */}
