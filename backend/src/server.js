@@ -47,6 +47,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/support', supportRoutes);
+
 app.use('/api/featured-areas', featuredAreaRoutes);
 app.use(errorHandler);
 
